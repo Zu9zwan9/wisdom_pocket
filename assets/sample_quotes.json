@@ -1,0 +1,10 @@
+[
+  {"id": 1, "text": "Be yourself; everyone else is already taken.", "author": "Oscar Wilde", "category": "wisdom", "is_premium": false},
+  {"id": 2, "text": "The only limit to our realization of tomorrow is our doubts of today.", "author": "Franklin D. Roosevelt", "category": "motivation", "is_premium": false},
+  {"id": 3, "text": "In the middle of difficulty lies opportunity.", "author": "Albert Einstein", "category": "success", "is_premium": true},
+  {"id": 4, "text": "Happiness depends upon ourselves.", "author": "Aristotle", "category": "life", "is_premium": false},
+  {"id": 5, "text": "The best way to predict the future is to create it.", "author": "Peter Drucker", "category": "leadership", "is_premium": false},
+  {"id": 6, "text": "We are what we repeatedly do. Excellence, then, is not an act, but a habit.", "author": "Will Durant", "category": "mindfulness", "is_premium": false},
+  {"id": 7, "text": "Where there is love there is life.", "author": "Mahatma Gandhi", "category": "love", "is_premium": true},
+  {"id": 8, "text": "Creativity is intelligence having fun.", "author": "Albert Einstein", "category": "creativity", "is_premium": false}
+]
