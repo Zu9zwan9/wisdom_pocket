@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:graphx/graphx.dart';
 import '../models/quote.dart';
 import '../services/quote_repository.dart';
@@ -18,9 +18,9 @@ class PocketExtractionWidget extends StatefulWidget {
 class _PocketExtractionWidgetState extends State<PocketExtractionWidget> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      body: SizedBox(
+    return CupertinoPageScaffold(
+      backgroundColor: CupertinoColors.systemGroupedBackground,
+      child: SizedBox(
         width: double.infinity,
         height: double.infinity,
         child: Stack(
@@ -141,31 +141,41 @@ class PocketExtractionScene extends GSprite {
     card = GSprite();
     cardContainer.addChild(card);
 
-    // Фон карточки - используем Color() конструктор
+    // Добавляем тень для карточки (iOS-style)
+    final shadow = GSprite();
+    shadow.graphics
+        .clear()
+        .beginFill(const Color(0x20000000)) // Полупрозрачная тень
+        .drawRoundRect(2, 4, cardWidth, cardHeight, 16, 16)
+        .endFill();
+    card.addChild(shadow);
+
+    // Основной фон карточки - iOS-style с увеличенным радиусом и без обводки
     card.graphics
         .clear()
-        .beginFill(const Color(0xffffffff))
-        .lineStyle(2, const Color(0xffe0e0e0))
-        .drawRoundRect(0, 0, cardWidth, cardHeight, 12, 12)
+        .beginFill(const Color(0xffffffff)) // Чистый белый
+        .drawRoundRect(0, 0, cardWidth, cardHeight, 16, 16) // Увеличенный радиус до 16px
         .endFill();
 
-    // Создаем текстовые элементы
+    // Создаем текстовые элементы (используем только базовые свойства GraphX)
     quoteText = GText();
     quoteText.text = 'Loading quote...';
-    quoteText.x = 20;
-    quoteText.y = 20;
-    quoteText.width = cardWidth - 40;
+    quoteText.x = 24; // Увеличенные отступы
+    quoteText.y = 24;
+    quoteText.width = cardWidth - 48;
+    quoteText.color = const Color(0xff1c1c1e); // iOS системный цвет текста
     card.addChild(quoteText);
 
     authorText = GText();
     authorText.text = '- Loading...';
-    authorText.x = 20;
-    authorText.y = cardHeight - 40;
-    authorText.width = cardWidth - 40;
+    authorText.x = 24;
+    authorText.y = cardHeight - 48; // Больше места снизу
+    authorText.width = cardWidth - 48;
+    authorText.color = const Color(0xff8e8e93); // iOS вторичный цвет текста
     card.addChild(authorText);
 
     if (kDebugMode) {
-      print('Card created');
+      print('Card created with iOS design');
     }
   }
 
@@ -185,26 +195,37 @@ class PocketExtractionScene extends GSprite {
       print('Creating restart button...');
     }
     restartButton = GSprite();
+
+    // Добавляем тень для кнопки (iOS-style)
+    final buttonShadow = GSprite();
+    buttonShadow.graphics
+        .clear()
+        .beginFill(const Color(0x15000000)) // Легкая тень
+        .drawRoundRect(-68, -23, 136, 46, 23, 23)
+        .endFill();
+    restartButton.addChild(buttonShadow);
+
+    // Основная кнопка в iOS Blue цвете
     restartButton.graphics
         .clear()
-        .beginFill(const Color(0xff4CAF50))
-        .lineStyle(2, const Color(0xff45a049))
-        .drawRoundRect(-60, -25, 120, 50, 25, 25)
+        .beginFill(const Color(0xff007AFF)) // iOS Blue
+        .drawRoundRect(-66, -25, 132, 50, 25, 25) // Больший размер, полностью скругленная
         .endFill();
 
     addChild(restartButton);
 
     restartText = GText();
     restartText.text = 'Get New Quote';
-    restartText.x = -50;
-    restartText.y = -10;
+    restartText.x = -45; // Центрируем текст
+    restartText.y = -8;
+    restartText.color = const Color(0xffffffff); // Белый текст
     restartButton.addChild(restartText);
 
     restartButton.mouseEnabled = true;
     restartButton.visible = false;
 
     if (kDebugMode) {
-      print('Restart button created');
+      print('Restart button created with iOS design');
     }
   }
 

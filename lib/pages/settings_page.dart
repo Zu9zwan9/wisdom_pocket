@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import '../services/animation_settings.dart';
 import '../services/feature_flags.dart';
 
@@ -16,32 +16,53 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    animSettings = AnimationSettings.instance;
-    featureFlags = FeatureFlags.instance;
+    try {
+      animSettings = AnimationSettings.instance;
+      featureFlags = FeatureFlags.instance;
+    } catch (e) {
+      // Fallback если синглтоны не инициализированы
+      print('Error accessing settings: $e');
+      // Можно добавить дефолтные значения или показать ошибку пользователю
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('Settings'),
+        backgroundColor: CupertinoColors.systemGroupedBackground,
+        leading: CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: const Icon(CupertinoIcons.back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildAnimationSettings(),
-            const SizedBox(height: 24),
-            _buildFeatureFlags(),
-          ],
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              _buildAnimationSettings(),
+              const SizedBox(height: 24),
+              _buildFeatureFlags(),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildAnimationSettings() {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemGroupedBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: CupertinoColors.separator,
+          width: 0.5,
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -89,7 +110,15 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildFeatureFlags() {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemGroupedBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: CupertinoColors.separator,
+          width: 0.5,
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -141,7 +170,7 @@ class _SettingsPageState extends State<SettingsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('$title: ${value.toStringAsFixed(1)}'),
-        Slider(
+        CupertinoSlider(
           value: value,
           min: min,
           max: max,
@@ -157,10 +186,18 @@ class _SettingsPageState extends State<SettingsPage> {
     bool value,
     ValueChanged<bool> onChanged,
   ) {
-    return SwitchListTile(
-      title: Text(title),
-      value: value,
-      onChanged: onChanged,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title),
+          CupertinoSwitch(
+            value: value,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
     );
   }
 }
