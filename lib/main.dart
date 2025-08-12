@@ -8,10 +8,27 @@ import 'services/quote_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final repo = await QuoteRepository.init();
-  final flags = await FeatureFlags.load();
-  final anim = await AnimationSettings.load();
-  runApp(MyApp(repo: repo, flags: flags, anim: anim));
+
+  print('Initializing app services...');
+
+  try {
+    final repo = await QuoteRepository.init();
+    final flags = await FeatureFlags.load();
+    final anim = await AnimationSettings.load();
+
+    print('All services initialized successfully');
+    runApp(MyApp(repo: repo, flags: flags, anim: anim));
+  } catch (e) {
+    print('Error initializing app: $e');
+    // Создаем экстренный репозиторий
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text('Error loading app: $e'),
+        ),
+      ),
+    ));
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -28,19 +45,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const userId = 'local_user';
     return MaterialApp(
       title: 'Wisdom Pocket',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.brown),
         useMaterial3: true,
       ),
+      home: HomePage(repository: repo),
       routes: {
-        '/': (_) =>
-            HomePage(repo: repo, flags: flags, anim: anim, userId: userId),
-        '/settings': (_) => SettingsPage(anim: anim, flags: flags),
+        '/settings': (context) => const SettingsPage(),
       },
-      initialRoute: '/',
     );
   }
 }

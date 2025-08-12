@@ -1,136 +1,166 @@
 import 'package:flutter/material.dart';
-
 import '../services/animation_settings.dart';
 import '../services/feature_flags.dart';
 
 class SettingsPage extends StatefulWidget {
-  final AnimationSettings anim;
-  final FeatureFlags flags;
-
-  const SettingsPage({super.key, required this.anim, required this.flags});
+  const SettingsPage({super.key});
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  late AnimationSettings _anim;
-  late FeatureFlags _flags;
+  late AnimationSettings animSettings;
+  late FeatureFlags featureFlags;
 
   @override
   void initState() {
     super.initState();
-    _anim = widget.anim;
-    _flags = widget.flags;
+    animSettings = AnimationSettings.instance;
+    featureFlags = FeatureFlags.instance;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            'Pocket Extraction Physics',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          _LabeledSlider(
-            label: 'Stiffness',
-            value: _anim.stiffness,
-            min: 50,
-            max: 500,
-            onChanged: (v) => setState(() => _anim.stiffness = v),
-            onChangeEnd: (_) => _anim.save(),
-          ),
-          _LabeledSlider(
-            label: 'Damping',
-            value: _anim.damping,
-            min: 5,
-            max: 40,
-            onChanged: (v) => setState(() => _anim.damping = v),
-            onChangeEnd: (_) => _anim.save(),
-          ),
-          _LabeledSlider(
-            label: 'Max Pull',
-            value: _anim.maxPull,
-            min: 120,
-            max: 360,
-            onChanged: (v) => setState(() => _anim.maxPull = v),
-            onChangeEnd: (_) => _anim.save(),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Growth Experiments',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          SwitchListTile(
-            title: const Text('Share to unlock'),
-            value: _flags.shareToUnlock,
-            onChanged: (v) => setState(() {
-              _flags.shareToUnlock = v;
-              _flags.save();
-            }),
-          ),
-          SwitchListTile(
-            title: const Text('Referral flow'),
-            value: _flags.referralFlow,
-            onChanged: (v) => setState(() {
-              _flags.referralFlow = v;
-              _flags.save();
-            }),
-          ),
-          SwitchListTile(
-            title: const Text('Confetti on extract'),
-            value: _flags.confettiOnExtract,
-            onChanged: (v) => setState(() {
-              _flags.confettiOnExtract = v;
-              _flags.save();
-            }),
-          ),
-        ],
+      appBar: AppBar(
+        title: const Text('Settings'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            _buildAnimationSettings(),
+            const SizedBox(height: 24),
+            _buildFeatureFlags(),
+          ],
+        ),
       ),
     );
   }
-}
 
-class _LabeledSlider extends StatelessWidget {
-  final String label;
-  final double value;
-  final double min;
-  final double max;
-  final ValueChanged<double> onChanged;
-  final ValueChanged<double>? onChangeEnd;
-  const _LabeledSlider({
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.onChanged,
-    this.onChangeEnd,
-  });
+  Widget _buildAnimationSettings() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Animation Settings',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _buildSlider(
+              'Card Extraction Speed',
+              animSettings.cardExtractionSpeed,
+              0.1,
+              2.0,
+              (value) => setState(() {
+                animSettings.cardExtractionSpeed = value;
+                animSettings.save();
+              }),
+            ),
+            _buildSlider(
+              'Spring Back Speed',
+              animSettings.springBackSpeed,
+              0.1,
+              3.0,
+              (value) => setState(() {
+                animSettings.springBackSpeed = value;
+                animSettings.save();
+              }),
+            ),
+            _buildSlider(
+              'Pull Threshold',
+              animSettings.pullThreshold,
+              0.1,
+              1.0,
+              (value) => setState(() {
+                animSettings.pullThreshold = value;
+                animSettings.save();
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildFeatureFlags() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Features',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _buildSwitch(
+              'Haptic Feedback',
+              featureFlags.enableHapticFeedback,
+              (value) => setState(() {
+                featureFlags.enableHapticFeedback = value;
+                featureFlags.save();
+              }),
+            ),
+            _buildSwitch(
+              'Sound Effects',
+              featureFlags.enableSoundEffects,
+              (value) => setState(() {
+                featureFlags.enableSoundEffects = value;
+                featureFlags.save();
+              }),
+            ),
+            _buildSwitch(
+              'Advanced Animations',
+              featureFlags.enableAdvancedAnimations,
+              (value) => setState(() {
+                featureFlags.enableAdvancedAnimations = value;
+                featureFlags.save();
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSlider(
+    String title,
+    double value,
+    double min,
+    double max,
+    ValueChanged<double> onChanged,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(label),
-            const Spacer(),
-            Text(value.toStringAsFixed(0)),
-          ],
-        ),
+        Text('$title: ${value.toStringAsFixed(1)}'),
         Slider(
           value: value,
           min: min,
           max: max,
+          divisions: 20,
           onChanged: onChanged,
-          onChangeEnd: onChangeEnd,
         ),
       ],
+    );
+  }
+
+  Widget _buildSwitch(
+    String title,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
+    return SwitchListTile(
+      title: Text(title),
+      value: value,
+      onChanged: onChanged,
     );
   }
 }

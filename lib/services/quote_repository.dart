@@ -1,108 +1,89 @@
 import 'dart:convert';
-
-import 'package:flutter/services.dart' show rootBundle, HapticFeedback;
-import 'package:hive_flutter/hive_flutter.dart';
-
+import 'dart:math';
+import 'package:flutter/services.dart';
 import '../models/quote.dart';
 
 class QuoteRepository {
-  static const _quotesBox = 'quotes_box';
-  static const _favsBox = 'favorites_box';
+  static QuoteRepository? _instance;
+  List<Quote> _quotes = [];
+  final Random _random = Random();
 
-  late final Box _quotes;
-  late final Box _favs;
+  QuoteRepository._();
 
   static Future<QuoteRepository> init() async {
-    await Hive.initFlutter();
-    final quotes = await Hive.openBox(_quotesBox);
-    final favs = await Hive.openBox(_favsBox);
-    final repo = QuoteRepository._(quotes, favs);
-    await repo._maybeSeedFromAssets();
-    return repo;
+    _instance ??= QuoteRepository._();
+    await _instance!._loadQuotes();
+    return _instance!;
   }
 
-  QuoteRepository._(this._quotes, this._favs);
-
-  Future<void> _maybeSeedFromAssets() async {
-    if ((_quotes.get('all') as List?)?.isNotEmpty == true) return;
-    final raw = await rootBundle.loadString('assets/sample_quotes.json');
-    final List<dynamic> data = json.decode(raw);
-    final quotes = data
-        .map((e) => Quote.fromMap(e as Map<String, dynamic>))
-        .toList();
-    _quotes.put('all', quotes.map((q) => q.toMap()).toList());
+  static QuoteRepository get instance {
+    if (_instance == null) {
+      throw StateError('QuoteRepository not initialized. Call QuoteRepository.init() first.');
+    }
+    return _instance!;
   }
 
-  List<Quote> getAll() {
-    final List list = _quotes.get('all', defaultValue: []) as List;
-    return list
-        .map((e) => Quote.fromMap(Map<String, dynamic>.from(e)))
-        .toList();
+  Future<void> _loadQuotes() async {
+    try {
+      print('Loading quotes from assets/sample_quotes.json...');
+      final String quotesJson = await rootBundle.loadString('assets/sample_quotes.json');
+      final List<dynamic> quotesData = json.decode(quotesJson);
+      _quotes = quotesData.map((json) => Quote.fromJson(json)).toList();
+      print('Loaded ${_quotes.length} quotes successfully');
+    } catch (e) {
+      print('Error loading quotes: $e');
+      // Fallback quotes if file doesn't exist
+      _quotes = [
+        const Quote(
+          id: 1,
+          text: 'The only way to do great work is to love what you do.',
+          author: 'Steve Jobs',
+          category: 'motivation',
+        ),
+        const Quote(
+          id: 2,
+          text: 'Innovation distinguishes between a leader and a follower.',
+          author: 'Steve Jobs',
+          category: 'leadership',
+        ),
+        const Quote(
+          id: 3,
+          text: 'Life is what happens to you while you\'re busy making other plans.',
+          author: 'John Lennon',
+          category: 'life',
+        ),
+        const Quote(
+          id: 4,
+          text: 'The future belongs to those who believe in the beauty of their dreams.',
+          author: 'Eleanor Roosevelt',
+          category: 'wisdom',
+        ),
+        const Quote(
+          id: 5,
+          text: 'It is during our darkest moments that we must focus to see the light.',
+          author: 'Aristotle',
+          category: 'wisdom',
+        ),
+      ];
+      print('Using fallback quotes: ${_quotes.length} quotes');
+    }
   }
 
-  Quote getDailyQuote(String? userId, {DateTime? now}) {
-    final quotes = getAll();
-    if (quotes.isEmpty) {
-      return Quote(
-        id: '0',
+  Quote getRandomQuote() {
+    if (_quotes.isEmpty) {
+      return const Quote(
+        id: 0,
         text: 'No quotes available',
         author: 'System',
-        category: 'general',
-        isPremium: false,
+        category: 'error',
       );
     }
-    final today = (now ?? DateTime.now()).toUtc();
-    final dateKey = '${today.year}-${today.month}-${today.day}';
-    final seedStr = '${userId ?? 'anon'}-$dateKey';
-    final idx = seedStr.hashCode.abs() % quotes.length;
-    return quotes[idx];
+    final quote = _quotes[_random.nextInt(_quotes.length)];
+    print('Selected quote: "${quote.text}" by ${quote.author}');
+    return quote;
   }
 
-  Quote random({bool premiumOk = true}) {
-    final quotes = getAll().where((q) => premiumOk || !q.isPremium).toList();
-    quotes.shuffle();
-    return quotes.first;
-  }
+  List<Quote> getAllQuotes() => List.unmodifiable(_quotes);
 
-  bool isFavorite(String userId, String quoteId) {
-    final Set favs =
-        _favs.get(userId, defaultValue: <String>{}) as Set? ?? <String>{};
-    return favs.contains(quoteId);
-  }
-
-  Future<void> toggleFavorite(String userId, String quoteId) async {
-    final key = userId;
-    final Set favs =
-        (_favs.get(key, defaultValue: <String>{}) as Set? ?? <String>{})
-            .toSet();
-    if (favs.contains(quoteId)) {
-      favs.remove(quoteId);
-    } else {
-      favs.add(quoteId);
-      // light haptic on favorite add
-      try {
-        await HapticFeedback.selectionClick();
-      } catch (_) {}
-    }
-    await _favs.put(key, favs);
-  }
-
-  List<Quote> favorites(String userId) {
-    final Set favs =
-        (_favs.get(userId, defaultValue: <String>{}) as Set? ?? <String>{})
-            .toSet();
-    return getAll().where((q) => favs.contains(q.id)).toList();
-  }
-
-  List<Quote> search(String query) {
-    final q = query.toLowerCase();
-    return getAll()
-        .where(
-          (e) =>
-              e.text.toLowerCase().contains(q) ||
-              e.author.toLowerCase().contains(q) ||
-              e.category.toLowerCase().contains(q),
-        )
-        .toList();
-  }
+  int get quotesCount => _quotes.length;
 }

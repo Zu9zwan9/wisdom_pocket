@@ -1,31 +1,40 @@
 class Quote {
-  final String id;
+  final int id;
   final String text;
   final String author;
   final String category;
   final bool isPremium;
 
-  Quote({
+  const Quote({
     required this.id,
     required this.text,
     required this.author,
     required this.category,
-    required this.isPremium,
+    this.isPremium = false,
   });
 
-  factory Quote.fromMap(Map<String, dynamic> map) => Quote(
-    id: map['id'].toString(),
-    text: map['text'] ?? '',
-    author: map['author'] ?? 'Unknown',
-    category: map['category'] ?? 'general',
-    isPremium: map['is_premium'] == true,
-  );
+  factory Quote.fromJson(Map<String, dynamic> json) {
+    return Quote(
+      id: json['id'] ?? 0,
+      text: json['text'] ?? '',
+      author: json['author'] ?? 'Unknown',
+      category: json['category'] ?? 'wisdom',
+      isPremium: json['is_premium'] ?? false,
+    );
+  }
 
-  Map<String, dynamic> toMap() => {
-    'id': id,
-    'text': text,
-    'author': author,
-    'category': category,
-    'is_premium': isPremium,
-  };
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'text': text,
+      'author': author,
+      'category': category,
+      'is_premium': isPremium,
+    };
+  }
+
+  @override
+  String toString() {
+    return '"$text" - $author';
+  }
 }

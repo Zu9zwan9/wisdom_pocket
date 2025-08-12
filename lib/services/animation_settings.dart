@@ -1,33 +1,40 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AnimationSettings {
-  static const _kStiffness = 'anim_stiffness';
-  static const _kDamping = 'anim_damping';
-  static const _kMaxPull = 'anim_max_pull';
+  static AnimationSettings? _instance;
 
-  double stiffness;
-  double damping;
-  double maxPull;
+  double cardExtractionSpeed;
+  double springBackSpeed;
+  double pullThreshold;
 
-  AnimationSettings({
-    this.stiffness = 200.0,
-    this.damping = 15.0,
-    this.maxPull = 200.0,
+  AnimationSettings._({
+    this.cardExtractionSpeed = 0.8,
+    this.springBackSpeed = 1.2,
+    this.pullThreshold = 0.5,
   });
 
   static Future<AnimationSettings> load() async {
+    _instance ??= AnimationSettings._();
     final prefs = await SharedPreferences.getInstance();
-    return AnimationSettings(
-      stiffness: prefs.getDouble(_kStiffness) ?? 200.0,
-      damping: prefs.getDouble(_kDamping) ?? 15.0,
-      maxPull: prefs.getDouble(_kMaxPull) ?? 200.0,
-    );
+
+    _instance!.cardExtractionSpeed = prefs.getDouble('cardExtractionSpeed') ?? 0.8;
+    _instance!.springBackSpeed = prefs.getDouble('springBackSpeed') ?? 1.2;
+    _instance!.pullThreshold = prefs.getDouble('pullThreshold') ?? 0.5;
+
+    return _instance!;
+  }
+
+  static AnimationSettings get instance {
+    if (_instance == null) {
+      throw StateError('AnimationSettings not initialized. Call AnimationSettings.load() first.');
+    }
+    return _instance!;
   }
 
   Future<void> save() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_kStiffness, stiffness);
-    await prefs.setDouble(_kDamping, damping);
-    await prefs.setDouble(_kMaxPull, maxPull);
+    await prefs.setDouble('cardExtractionSpeed', cardExtractionSpeed);
+    await prefs.setDouble('springBackSpeed', springBackSpeed);
+    await prefs.setDouble('pullThreshold', pullThreshold);
   }
 }
