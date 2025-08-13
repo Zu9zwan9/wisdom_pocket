@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../models/quote.dart';
 
@@ -25,13 +26,19 @@ class QuoteRepository {
 
   Future<void> _loadQuotes() async {
     try {
-      print('Loading quotes from assets/sample_quotes.json...');
+      if (kDebugMode) {
+        print('Loading quotes from assets/sample_quotes.json...');
+      }
       final String quotesJson = await rootBundle.loadString('assets/sample_quotes.json');
       final List<dynamic> quotesData = json.decode(quotesJson);
       _quotes = quotesData.map((json) => Quote.fromJson(json)).toList();
-      print('Loaded ${_quotes.length} quotes successfully');
+      if (kDebugMode) {
+        print('Loaded ${_quotes.length} quotes successfully');
+      }
     } catch (e) {
-      print('Error loading quotes: $e');
+      if (kDebugMode) {
+        print('Error loading quotes: $e');
+      }
       // Fallback quotes if file doesn't exist
       _quotes = [
         const Quote(
@@ -65,7 +72,9 @@ class QuoteRepository {
           category: 'wisdom',
         ),
       ];
-      print('Using fallback quotes: ${_quotes.length} quotes');
+      if (kDebugMode) {
+        print('Using fallback quotes: ${_quotes.length} quotes');
+      }
     }
   }
 
@@ -79,7 +88,9 @@ class QuoteRepository {
       );
     }
     final quote = _quotes[_random.nextInt(_quotes.length)];
-    print('Selected quote: "${quote.text}" by ${quote.author}');
+    if (kDebugMode) {
+      print('Selected quote: "${quote.text}" by ${quote.author}');
+    }
     return quote;
   }
 

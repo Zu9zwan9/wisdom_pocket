@@ -1,4 +1,6 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:wisdom_pocket/pages/handwriting_test_page.dart';
 import '../services/quote_repository.dart';
 import '../widgets/pocket_extraction_widget.dart';
 import 'settings_page.dart';
@@ -17,6 +19,18 @@ class HomePage extends StatelessWidget {
       navigationBar: CupertinoNavigationBar(
         middle: const Text('Wisdom Pocket'),
         backgroundColor: CupertinoColors.systemGroupedBackground,
+        leading: CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: const Icon(CupertinoIcons.pen),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const HandwritingTestPage(),
+              ),
+            );
+          },
+        ),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
           child: const Icon(CupertinoIcons.settings),

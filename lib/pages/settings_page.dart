@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import '../services/animation_settings.dart';
 import '../services/feature_flags.dart';
 
@@ -21,7 +22,9 @@ class _SettingsPageState extends State<SettingsPage> {
       featureFlags = FeatureFlags.instance;
     } catch (e) {
       // Fallback если синглтоны не инициализированы
-      print('Error accessing settings: $e');
+      if (kDebugMode) {
+        print('Error accessing settings: $e');
+      }
       // Можно добавить дефолтные значения или показать ошибку пользователю
     }
   }

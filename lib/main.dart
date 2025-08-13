@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 
 import 'pages/home_page.dart';
 import 'pages/settings_page.dart';
@@ -9,17 +10,23 @@ import 'services/quote_repository.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  print('Initializing app services...');
+  if (kDebugMode) {
+    print('Initializing app services...');
+  }
 
   try {
     final repo = await QuoteRepository.init();
     final flags = await FeatureFlags.load();
     final anim = await AnimationSettings.load();
 
-    print('All services initialized successfully');
+    if (kDebugMode) {
+      print('All services initialized successfully');
+    }
     runApp(MyApp(repo: repo, flags: flags, anim: anim));
   } catch (e) {
-    print('Error initializing app: $e');
+    if (kDebugMode) {
+      print('Error initializing app: $e');
+    }
     // Улучшенный экстренный интерфейс
     runApp(CupertinoApp(
       title: 'Wisdom Pocket',
