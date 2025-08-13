@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:graphx/graphx.dart';
 import '../models/quote.dart';
@@ -67,6 +69,7 @@ class PocketExtractionScene extends GSprite {
   // Компоненты сцены
   late GSprite cardContainer;
   late GSprite card;
+  late GSprite cardBorder;
   late GSprite pocket;
   late GSprite restartButton;
   late GText restartText;
@@ -84,6 +87,14 @@ class PocketExtractionScene extends GSprite {
   bool isCardExtracted = false;
   double initialCardY = 0;
   double cardStartY = 0;
+
+  // Переменные для анимации обводки
+  Timer? borderAnimationTimer;
+  double borderAnimationProgress = 0.0;
+
+  // Настройки для движущейся линии
+  static const double borderLineLength = 0.3; // Длина линии (30% от периметра)
+  static const double borderSpeed = 0.008; // Скорость движения линии
 
   PocketExtractionScene({required this.repository});
 
@@ -157,21 +168,26 @@ class PocketExtractionScene extends GSprite {
         .drawRoundRect(0, 0, cardWidth, cardHeight, 16, 16) // Увеличенный радиус до 16px
         .endFill();
 
-    // Создаем текстовые элементы (используем только базовые свойства GraphX)
+    // Создаем бегущую обводку (изначально скрыта)
+    cardBorder = GSprite();
+    cardBorder.visible = false;
+    card.addChild(cardBorder);
+
+    // Создаем текстовые элементы
     quoteText = GText();
     quoteText.text = 'Loading quote...';
-    quoteText.x = 24; // Увеличенные отступы
+    quoteText.x = 24;
     quoteText.y = 24;
     quoteText.width = cardWidth - 48;
-    quoteText.color = const Color(0xff1c1c1e); // iOS системный цвет текста
+    quoteText.color = const Color(0xff1c1c1e);
     card.addChild(quoteText);
 
     authorText = GText();
     authorText.text = '- Loading...';
     authorText.x = 24;
-    authorText.y = cardHeight - 48; // Больше места снизу
+    authorText.y = cardHeight - 48;
     authorText.width = cardWidth - 48;
-    authorText.color = const Color(0xff8e8e93); // iOS вторичный цвет текста
+    authorText.color = const Color(0xff8e8e93);
     card.addChild(authorText);
 
     if (kDebugMode) {
@@ -354,7 +370,43 @@ class PocketExtractionScene extends GSprite {
 
     Future.delayed(Duration(milliseconds: (animationDuration * 1000).toInt()), () {
       _showRestartButton();
+      _startBorderAnimation();
     });
+  }
+
+  void _startBorderAnimation() {
+    if (kDebugMode) {
+      print('Starting border animation');
+    }
+
+    cardBorder.visible = true;
+    borderAnimationProgress = 0.0;
+
+    // Используем Timer для движущейся линии
+    borderAnimationTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+      if (!cardBorder.visible) {
+        timer.cancel();
+        return;
+      }
+
+      borderAnimationProgress += borderSpeed;
+      if (borderAnimationProgress >= 1.0) {
+        borderAnimationProgress = 0.0;
+      }
+
+      _updateBorderAnimation();
+    });
+
+    if (kDebugMode) {
+      print('Border animation started');
+    }
+  }
+
+  void _stopBorderAnimation() {
+    borderAnimationTimer?.cancel();
+    borderAnimationTimer = null;
+    cardBorder.visible = false;
+    borderAnimationProgress = 0.0;
   }
 
   void _showRestartButton() {
@@ -391,6 +443,9 @@ class PocketExtractionScene extends GSprite {
     if (kDebugMode) {
       print('Restart pressed');
     }
+
+    // Остановить анимацию обводки
+    _stopBorderAnimation();
 
     // Скрыть кнопку
     restartButton.visible = false;
@@ -443,21 +498,205 @@ class PocketExtractionScene extends GSprite {
     }
 
     // Обновляем текст цитаты
-    if (quoteText != null) {
-      quoteText.text = currentQuote.text;
-    }
+    quoteText.text = currentQuote.text;
 
     // Обновляем автора
-    if (authorText != null) {
-      authorText.text = '- ${currentQuote.author}';
-    }
+    authorText.text = '- ${currentQuote.author}';
 
     if (kDebugMode) {
       print('Card text updated');
     }
   }
-}
 
+  void _updateBorderAnimation() {
+    if (!cardBorder.visible) return;
+
+    cardBorder.graphics.clear();
+
+    // Рисуем движущуюся градиентную линию по периметру карточки
+    _drawMovingBorderLine();
+  }
+
+  void _drawMovingBorderLine() {
+    const cornerRadius = 18.0;
+    const borderWidth = 3.0;
+    const margin = 2.0;
+
+    // Вычисляем размеры прямоугольника
+    final rect = {
+      'left': -margin,
+      'top': -margin,
+      'right': cardWidth + margin,
+      'bottom': cardHeight + margin,
+    };
+
+    // Вычисляем периметр прямоугольника с учетом скругленных углов
+    final straightSides = 2 * (cardWidth + cardHeight + 2 * margin);
+    final corners = 2 * pi * cornerRadius;
+    final totalPerimeter = straightSides + corners;
+
+    // Вычисляем позицию начала и конца линии
+    final lineStartPos = borderAnimationProgress * totalPerimeter;
+    final lineEndPos = (lineStartPos + borderLineLength * totalPerimeter) % totalPerimeter;
+
+    // Рисуем градиентную линию по сегментам
+    _drawGradientLineSegments(rect, cornerRadius, borderWidth, lineStartPos, lineEndPos, totalPerimeter);
+  }
+
+  void _drawGradientLineSegments(Map<String, double> rect, double cornerRadius, double borderWidth,
+                                  double lineStartPos, double lineEndPos, double totalPerimeter) {
+    const int segments = 50; // Увеличиваем количество сегментов для плавной линии
+
+    // Создаем список точек для цельной линии
+    final List<Map<String, double>> linePoints = [];
+
+    for (int i = 0; i < segments; i++) {
+      final segmentProgress = i / (segments - 1);
+      double currentPos;
+
+      if (lineEndPos > lineStartPos) {
+        currentPos = lineStartPos + segmentProgress * (lineEndPos - lineStartPos);
+      } else {
+        final totalLineLength = (totalPerimeter - lineStartPos) + lineEndPos;
+        final segmentPos = lineStartPos + segmentProgress * totalLineLength;
+        currentPos = segmentPos >= totalPerimeter ? segmentPos - totalPerimeter : segmentPos;
+      }
+
+      // Создаем градиент от прозрачного к синему и обратно
+      double alpha;
+      if (segmentProgress < 0.2) {
+        alpha = segmentProgress / 0.2; // Плавное появление
+      } else if (segmentProgress > 0.8) {
+        alpha = (1.0 - segmentProgress) / 0.2; // Плавное исчезновение
+      } else {
+        alpha = 1.0; // Полная яркость в середине
+      }
+
+      final point = _getPointOnRoundedPerimeter(rect, cornerRadius, currentPos, totalPerimeter);
+      if (point != null) {
+        linePoints.add({
+          'x': point['x']!,
+          'y': point['y']!,
+          'alpha': alpha,
+        });
+      }
+    }
+
+    // Рисуем цельную линию с градиентом
+    _drawContinuousGradientLine(linePoints, borderWidth);
+  }
+
+  void _drawContinuousGradientLine(List<Map<String, double>> points, double borderWidth) {
+    if (points.length < 2) return;
+
+    // Рисуем линию как серию соединенных сегментов
+    for (int i = 0; i < points.length - 1; i++) {
+      final currentPoint = points[i];
+      final nextPoint = points[i + 1];
+
+      // Используем среднюю прозрачность между двумя точками
+      final alpha = (currentPoint['alpha']! + nextPoint['alpha']!) / 2;
+      final color = Color.fromARGB(
+        (255 * alpha * 0.9).toInt(), // Максимальная прозрачность 90%
+        0x00, 0x7A, 0xFF, // iOS Blue
+      );
+
+      cardBorder.graphics.lineStyle(borderWidth, color);
+      cardBorder.graphics.moveTo(currentPoint['x']!, currentPoint['y']!);
+      cardBorder.graphics.lineTo(nextPoint['x']!, nextPoint['y']!);
+    }
+  }
+
+  Map<String, double>? _getPointOnRoundedPerimeter(Map<String, double> rect, double cornerRadius,
+                                                  double position, double totalPerimeter) {
+    final width = rect['right']! - rect['left']!;
+    final height = rect['bottom']! - rect['top']!;
+
+    // Вычисляем длины сторон с учетом скругленных углов
+    final topSideLength = width - 2 * cornerRadius;
+    final rightSideLength = height - 2 * cornerRadius;
+    final bottomSideLength = width - 2 * cornerRadius;
+    final leftSideLength = height - 2 * cornerRadius;
+    final quarterCircle = (pi * cornerRadius) / 2;
+
+    // Общий периметр для нормализации
+    final totalSides = topSideLength + rightSideLength + bottomSideLength + leftSideLength;
+    final totalCorners = 4 * quarterCircle;
+    final normalizedPos = (position / totalPerimeter) * (totalSides + totalCorners);
+
+    double x, y;
+    double currentPos = 0;
+
+    // Верхняя сторона (без углов)
+    if (normalizedPos < topSideLength) {
+      x = rect['left']! + cornerRadius + normalizedPos;
+      y = rect['top']!;
+      return {'x': x, 'y': y};
+    }
+    currentPos += topSideLength;
+
+    // Верхний правый угол
+    if (normalizedPos < currentPos + quarterCircle) {
+      final angleProgress = (normalizedPos - currentPos) / quarterCircle;
+      final angle = angleProgress * (pi / 2); // От 0 до π/2
+      x = rect['right']! - cornerRadius + cornerRadius * cos(pi / 2 - angle);
+      y = rect['top']! + cornerRadius - cornerRadius * sin(pi / 2 - angle);
+      return {'x': x, 'y': y};
+    }
+    currentPos += quarterCircle;
+
+    // Правая сторона
+    if (normalizedPos < currentPos + rightSideLength) {
+      x = rect['right']!;
+      y = rect['top']! + cornerRadius + (normalizedPos - currentPos);
+      return {'x': x, 'y': y};
+    }
+    currentPos += rightSideLength;
+
+    // Нижний правый угол
+    if (normalizedPos < currentPos + quarterCircle) {
+      final angleProgress = (normalizedPos - currentPos) / quarterCircle;
+      final angle = angleProgress * (pi / 2); // От 0 до π/2
+      x = rect['right']! - cornerRadius + cornerRadius * cos(angle);
+      y = rect['bottom']! - cornerRadius + cornerRadius * sin(angle);
+      return {'x': x, 'y': y};
+    }
+    currentPos += quarterCircle;
+
+    // Нижняя сторона
+    if (normalizedPos < currentPos + bottomSideLength) {
+      x = rect['right']! - cornerRadius - (normalizedPos - currentPos);
+      y = rect['bottom']!;
+      return {'x': x, 'y': y};
+    }
+    currentPos += bottomSideLength;
+
+    // Нижний левый угол
+    if (normalizedPos < currentPos + quarterCircle) {
+      final angleProgress = (normalizedPos - currentPos) / quarterCircle;
+      final angle = angleProgress * (pi / 2); // От 0 до π/2
+      x = rect['left']! + cornerRadius - cornerRadius * cos(pi / 2 - angle);
+      y = rect['bottom']! - cornerRadius + cornerRadius * sin(pi / 2 - angle);
+      return {'x': x, 'y': y};
+    }
+    currentPos += quarterCircle;
+
+    // Левая сторона
+    if (normalizedPos < currentPos + leftSideLength) {
+      x = rect['left']!;
+      y = rect['bottom']! - cornerRadius - (normalizedPos - currentPos);
+      return {'x': x, 'y': y};
+    }
+    currentPos += leftSideLength;
+
+    // Верхний левый угол
+    final angleProgress = (normalizedPos - currentPos) / quarterCircle;
+    final angle = angleProgress * (pi / 2); // От 0 до π/2
+    x = rect['left']! + cornerRadius - cornerRadius * cos(angle);
+    y = rect['top']! + cornerRadius - cornerRadius * sin(angle);
+    return {'x': x, 'y': y};
+  }
+}
 
 const int kColorWhite = 0xffffff;
 const int kColorLightGrey = 0xe0e0e0;
