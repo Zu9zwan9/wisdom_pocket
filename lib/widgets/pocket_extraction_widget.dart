@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:graphx/graphx.dart';
+import 'package:wisdom_pocket/widgets/handwriting_quote_painter.dart';
+import 'package:wisdom_pocket/handwriting/handwriting_rules.dart';
 import '../models/quote.dart';
 import '../services/quote_repository.dart';
 
@@ -17,20 +19,70 @@ class PocketExtractionWidget extends StatefulWidget {
   State<PocketExtractionWidget> createState() => _PocketExtractionWidgetState();
 }
 
-class _PocketExtractionWidgetState extends State<PocketExtractionWidget> {
+class _PocketExtractionWidgetState extends State<PocketExtractionWidget> with SingleTickerProviderStateMixin {
+  Quote? _currentQuote;
+  bool _extracted = false;
+  Path? _authorPath;
+  List<Path>? _quoteLinePaths; // три строки
+  late final AnimationController _hwController = AnimationController(vsync: this, duration: const Duration(seconds: 10));
+  double? _cardLeft;
+  double? _cardTop;
+
+  Future<void> _preparePaths() async {
+    final quote = _currentQuote;
+    if (quote == null) return;
+    // строим три строки с расширенными правилами
+    final lines = await buildAdvancedMultilineQuotePaths(quote.text);
+    final author = (await buildAdvancedTextPath('- ${quote.author}')).path;
+    if (!mounted) return;
+    setState(() {
+      _quoteLinePaths = lines;
+      _authorPath = author;
+    });
+    _hwController
+      ..reset()
+      ..forward();
+  }
+
+  void _onQuoteLoaded(Quote q) {
+    setState(() {
+      _currentQuote = q;
+      _extracted = false;
+      _quoteLinePaths = null;
+      _authorPath = null;
+    });
+  }
+
+  void _onCardExtracted(Quote q, double left, double top) async {
+    setState(() {
+      _extracted = true;
+      _cardLeft = left;
+      _cardTop = top;
+    });
+    await _preparePaths();
+  }
+
+  @override
+  void dispose() {
+    _hwController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       backgroundColor: CupertinoColors.systemGroupedBackground,
-      child: SizedBox(
-        width: double.infinity,
-        height: double.infinity,
-        child: Stack(
+      child: LayoutBuilder(
+        builder: (context, constraints) => Stack(
           children: [
             // GraphX сцена без кармана
             SceneBuilderWidget(
               builder: () => SceneController(
-                front: PocketExtractionScene(repository: widget.repository),
+                front: PocketExtractionScene(
+                  repository: widget.repository,
+                  onQuoteLoaded: _onQuoteLoaded,
+                  onCardExtracted: _onCardExtracted,
+                ),
               ),
               autoSize: true,
             ),
@@ -47,6 +99,26 @@ class _PocketExtractionWidgetState extends State<PocketExtractionWidget> {
                 ),
               ),
             ),
+            if (_extracted && _quoteLinePaths != null && _authorPath != null && _cardLeft != null && _cardTop != null)
+              Positioned(
+                left: _cardLeft,
+                top: _cardTop,
+                width: PocketExtractionScene.cardWidth,
+                height: PocketExtractionScene.cardHeight,
+                child: AnimatedBuilder(
+                  animation: _hwController,
+                  builder: (ctx, _) => CustomPaint(
+                    painter: QuoteHandwritingMultilinePainter(
+                      quoteLinePaths: _quoteLinePaths!,
+                      authorPath: _authorPath!,
+                      progress: _hwController.value,
+                      strokeWidth: 2.0,
+                      padding: 12,
+                      lineSpacing: 34, // увеличенный интервал
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -56,6 +128,8 @@ class _PocketExtractionWidgetState extends State<PocketExtractionWidget> {
 
 class PocketExtractionScene extends GSprite {
   final QuoteRepository repository;
+  final void Function(Quote) onQuoteLoaded;
+  final void Function(Quote, double left, double top) onCardExtracted;
 
   // Константы анимации
   static const double cardWidth = 280.0;
@@ -96,7 +170,7 @@ class PocketExtractionScene extends GSprite {
   static const double borderLineLength = 0.3; // Длина линии (30% от периметра)
   static const double borderSpeed = 0.008; // Скорость движения линии
 
-  PocketExtractionScene({required this.repository});
+  PocketExtractionScene({required this.repository, required this.onQuoteLoaded, required this.onCardExtracted});
 
   @override
   void addedToStage() {
@@ -197,7 +271,7 @@ class PocketExtractionScene extends GSprite {
 
   void _createPocket() {
     // Карман теперь отображается как Flutter Image виджет
-    // Создаем пустой спрайт для совместимости с существующим кодом
+    // Создаем пустой спрайт для совместимости с сущес��вующим кодом
     pocket = GSprite();
     addChild(pocket);
 
@@ -255,7 +329,7 @@ class PocketExtractionScene extends GSprite {
       print('Positioning elements at center: $centerX, $centerY');
     }
 
-    // Начальная позиция карточки (наполовину в кармане) - опущена на 30 пикселей
+    // Начальная позиция карточки (��аполовину в кармане) - опущена на 30 пикселей
     initialCardY = centerY - cardHeight / 4 + 50; // Добавлены 30 пикселей
     cardStartY = initialCardY;
 
@@ -371,6 +445,11 @@ class PocketExtractionScene extends GSprite {
     Future.delayed(Duration(milliseconds: (animationDuration * 1000).toInt()), () {
       _showRestartButton();
       _startBorderAnimation();
+      // hide original text for handwriting overlay
+      quoteText.visible = false;
+      authorText.visible = false;
+      // notify parent with global-ish coordinates (since stage fills widget, we can use cardContainer.x/y)
+      onCardExtracted(currentQuote, cardContainer.x, cardContainer.y);
     });
   }
 
@@ -447,7 +526,7 @@ class PocketExtractionScene extends GSprite {
     // Остановить анимацию обводки
     _stopBorderAnimation();
 
-    // Скрыть кнопку
+    // Скрыт�� кнопку
     restartButton.visible = false;
     restartButton.alpha = 0;
 
@@ -475,6 +554,10 @@ class PocketExtractionScene extends GSprite {
     try {
       currentQuote = repository.getRandomQuote();
       _updateCardText();
+      onQuoteLoaded(currentQuote);
+      // ensure texts visible for not yet extracted state
+      quoteText.visible = true;
+      authorText.visible = true;
       if (kDebugMode) {
         print('Quote loaded: ${currentQuote.text}');
       }
@@ -489,6 +572,7 @@ class PocketExtractionScene extends GSprite {
         category: 'error',
       );
       _updateCardText();
+      onQuoteLoaded(currentQuote);
     }
   }
 
@@ -619,7 +703,7 @@ class PocketExtractionScene extends GSprite {
     final leftSideLength = height - 2 * cornerRadius;
     final quarterCircle = (pi * cornerRadius) / 2;
 
-    // Общий периметр для нормализации
+    // Общий периме��р для нормал��зации
     final totalSides = topSideLength + rightSideLength + bottomSideLength + leftSideLength;
     final totalCorners = 4 * quarterCircle;
     final normalizedPos = (position / totalPerimeter) * (totalSides + totalCorners);
